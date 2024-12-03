@@ -1,5 +1,7 @@
 # TypeScript Event Manager
 
+[![Node.js CI](https://github.com/cmatosbc/ts-event-manager/actions/workflows/node.js.yml/badge.svg)](https://github.com/cmatosbc/ts-event-manager/actions/workflows/node.js.yml)
+
 A robust TypeScript library for managing DOM event listeners with automatic cleanup, intersection observer support, and conditional event handling. This library helps prevent memory leaks and simplifies the management of event listeners in modern web applications.
 
 ## Features
