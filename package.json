@@ -1,0 +1,51 @@
+{
+  "name": "ts-event-manager",
+  "version": "1.0.0",
+  "description": "A TypeScript event listener manager with intersection observer and automatic cleanup",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "pnpm run build && playwright test",
+    "test:ui": "pnpm run build && playwright test --ui",
+    "serve": "pnpm http-server . -p 3000",
+    "prepare": "npm run build",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "keywords": [
+    "typescript",
+    "event-listener",
+    "intersection-observer",
+    "dom",
+    "events"
+  ],
+  "author": "Carlos Artur Matos",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/jest": "^29.5.5",
+    "@typescript-eslint/eslint-plugin": "^6.7.0",
+    "@typescript-eslint/parser": "^6.7.0",
+    "eslint": "^8.49.0",
+    "http-server": "^14.1.1",
+    "jest": "^29.7.0",
+    "playwright": "^1.49.0",
+    "prettier": "^3.0.3",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.2.2"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/ts-event-manager.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/ts-event-manager/issues"
+  },
+  "homepage": "https://github.com/yourusername/ts-event-manager#readme"
+}

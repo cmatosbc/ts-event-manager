@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EventListenerManager Test</title>
+    <style>
+        .test-element {
+            width: 200px;
+            height: 200px;
+            margin: 20px;
+            background-color: #3498db;
+            cursor: pointer;
+        }
+        
+        .scroll-container {
+            height: 2000px;
+            padding: 20px;
+        }
+        
+        .intersection-target {
+            width: 200px;
+            height: 200px;
+            margin: 20px;
+            background-color: #e74c3c;
+            position: relative;
+            top: 1000px;
+        }
+    </style>
+</head>
+<body>
+    <div class="scroll-container">
+        <div id="clickTarget" class="test-element"></div>
+        <div id="intersectionTarget" class="intersection-target"></div>
+    </div>
+</body>
+</html>

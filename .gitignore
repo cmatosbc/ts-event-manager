@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Coverage
+coverage/
+
+# Environment variables
+.env
+.env.local
+
+# Tests
+test-results/
+playwright-report/
+
+# OS
+.DS_Store
+Thumbs.db
