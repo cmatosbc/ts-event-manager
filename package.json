@@ -42,10 +42,10 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/ts-event-manager.git"
+    "url": "git+https://github.com/cmatosbc/ts-event-manager.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/ts-event-manager/issues"
+    "url": "https://github.com/cmatosbc/ts-event-manager/issues"
   },
-  "homepage": "https://github.com/yourusername/ts-event-manager#readme"
+  "homepage": "https://github.com/cmatosbc/ts-event-manager#readme"
 }
