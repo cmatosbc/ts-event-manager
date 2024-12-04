@@ -1,6 +1,6 @@
 {
   "name": "ts-event-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A TypeScript event listener manager with intersection observer and automatic cleanup",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
