@@ -21,7 +21,7 @@ test.describe('EventListenerManager', () => {
     // Inject the EventListenerManager class directly
     await page.addScriptTag({
       content: `
-        class EventListenerManager {
+        window.EventListenerManager = class EventListenerManager {
           constructor() {
             this.listenerMap = new WeakMap();
             this.observer = new IntersectionObserver(this.handleIntersect.bind(this), {
@@ -107,7 +107,7 @@ test.describe('EventListenerManager', () => {
           }
         }
 
-        window.eventManager = new EventListenerManager();
+        window.eventManager = new window.EventListenerManager();
         window.clickCount = 0;
         window.secondClickCount = 0;
         window.conditionalClickCount = 0;

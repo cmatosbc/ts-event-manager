@@ -13,6 +13,7 @@ A robust TypeScript library for managing DOM event listeners with automatic clea
 - **Memory leak prevention** using WeakMap for listener storage
 - **DOM mutation monitoring** for automatic listener cleanup
 - **Zero dependencies** - just pure TypeScript/JavaScript
+- **Chained event handlers** for processing events through multiple steps
 
 ## Installation
 
@@ -371,26 +372,78 @@ const list = new DynamicList('dynamic-list');
 list.destroy(); // All event listeners will be cleaned up
 ```
 
-This example demonstrates:
-- Complex event management for dynamic UI components
-- Conditional event handling with drag and drop
-- Automatic cleanup of multiple related listeners
-- Integration with common UI patterns (sorting, filtering, drag & drop)
-- Type-safe event handling with TypeScript
+### Chained Event Handlers
 
-These examples demonstrate how EventListenerManager can be used to:
-- Manage complex event interactions (infinite scroll)
-- Optimize performance (lazy loading)
-- Handle conditional events (form validation)
-- Automatically clean up listeners (modal dialog)
-- Manage dynamic content
+The EventListenerManager supports creating chains of event handlers where the output of one handler becomes the input for the next. This is particularly useful for processing events through multiple steps, such as validation, transformation, and UI updates.
 
-The library particularly shines in scenarios where you need to:
-- Track and manage multiple related event listeners
-- Ensure proper cleanup of event listeners
-- Implement visibility-based functionality
-- Handle conditional event triggering
-- Prevent memory leaks in dynamic UIs
+```typescript
+import { EventListenerManager, ChainedEventHandler } from 'ts-event-manager';
+
+const manager = new EventListenerManager();
+
+// Define handlers in your chain
+const validateInput: ChainedEventHandler<string> = (event, data) => ({
+  data: (event.target as HTMLInputElement).value.trim(),
+  continue: true
+});
+
+const transformInput: ChainedEventHandler<string> = (event, data) => ({
+  data: data?.toUpperCase(),
+  continue: true
+});
+
+const updateUI: ChainedEventHandler<string> = (event, data) => {
+  // Store or use the processed data
+  const output = document.getElementById('output');
+  if (output) {
+    output.textContent = data || '';
+  }
+  return { data, continue: true };
+};
+
+// Get input element and create the chain
+const input = document.querySelector('input');
+if (input) {
+  manager.createEventChain(
+    'input-chain',          // unique chain ID
+    input,                  // DOM element
+    'input',               // event type
+    [validateInput, transformInput, updateUI]  // array of handlers
+  );
+}
+
+// Example: Conditional chain handling
+const validateWithCondition: ChainedEventHandler<string> = (event, data) => ({
+  data: (event.target as HTMLInputElement).value.trim(),
+  continue: (event.target as HTMLInputElement).value.length > 0  // only continue if input is not empty
+});
+
+// Add a handler to an existing chain
+const logHandler: ChainedEventHandler<string> = (event, data) => {
+  console.log('Processed input:', data);
+  return { data, continue: true };
+};
+
+manager.addToChain('input-chain', logHandler);
+
+// Remove the chain when no longer needed
+manager.removeEventChain('input-chain');
+```
+
+Each handler in the chain:
+- Receives the event object and the data from the previous handler
+- Must return an object with:
+  - `data`: The processed data to pass to the next handler
+  - `continue`: Boolean indicating whether to continue the chain
+- Can be async for handling asynchronous operations
+- Can break the chain by returning `continue: false`
+
+Common use cases for chained events:
+- Form validation and processing
+- Multi-step data transformations
+- Input sanitization and formatting
+- Event logging and monitoring
+- Complex UI interactions with multiple steps
 
 ## Development
 
@@ -470,6 +523,49 @@ removeListener(
 ##### `cleanUp`
 ```typescript
 cleanUp(): void
+```
+
+##### `createEventChain`
+Creates a new chain of event handlers.
+```typescript
+createEventChain<T>(
+  chainId: string,
+  element: Element,
+  event: string,
+  handlers: ChainedEventHandler<T>[]
+): void
+```
+
+##### `addToChain`
+Adds a new handler to an existing chain.
+```typescript
+addToChain<T>(
+  chainId: string,
+  handler: ChainedEventHandler<T>,
+  position?: number
+): void
+```
+
+##### `removeEventChain`
+Removes an entire event chain.
+```typescript
+removeEventChain(chainId: string): void
+```
+
+### `ChainedEventHandler<T>`
+
+A type representing a handler function in an event chain.
+
+```typescript
+type ChainedEventHandler<T = any> = (
+  event: Event,
+  data?: T
+) => ChainedEventResult<T> | Promise<ChainedEventResult<T>>;
+
+interface ChainedEventResult<T = any> {
+  data: T;        // Data to pass to the next handler
+  continue: boolean; // Whether to continue the chain
+}
 ```
 
 ## License
