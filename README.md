@@ -445,6 +445,38 @@ Common use cases for chained events:
 - Event logging and monitoring
 - Complex UI interactions with multiple steps
 
+## Extensions
+
+The library provides optional extensions for advanced event handling:
+
+### Timing Extension (Debounce/Throttle)
+
+```typescript
+import { withTiming } from 'ts-event-manager/extensions';
+
+const timedManager = withTiming(eventManager);
+timedManager.addTimedListener(
+    window,
+    'scroll',
+    (event) => console.log('Scrolled!'),
+    { delay: 200 }
+);
+```
+
+### Event Delegation Extension
+
+```typescript
+import { withDelegation } from 'ts-event-manager/extensions';
+
+const delegatedManager = withDelegation(eventManager);
+delegatedManager.addDelegatedListener(
+    document.querySelector('.container'),
+    'click',
+    { selector: '.button' },
+    (event, target) => console.log('Button clicked:', target)
+);
+```
+
 ## Development
 
 ### Prerequisites
