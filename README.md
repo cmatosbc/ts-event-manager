@@ -449,6 +449,72 @@ Common use cases for chained events:
 
 The library provides optional extensions for advanced event handling:
 
+### Middleware Extension
+
+```typescript
+import { withMiddleware } from 'ts-event-manager/extensions';
+
+const manager = withMiddleware(eventManager);
+
+// Add logging middleware
+manager.use(async (event, next) => {
+    console.log('Before event:', event.type);
+    await next();
+    console.log('After event:', event.type);
+});
+
+// Add event listener with middleware
+manager.addListenerWithMiddleware(
+    element,
+    'click',
+    (event) => console.log('Clicked!'),
+    { parallel: false, continueOnError: true }
+);
+```
+
+### Error Boundary Extension
+
+```typescript
+import { withErrorBoundary } from 'ts-event-manager/extensions';
+
+const manager = withErrorBoundary(eventManager);
+
+// Add protected event listener
+manager.addProtectedListener(
+    element,
+    'click',
+    (event) => {
+        throw new Error('Example error');
+    },
+    {
+        onError: (error, event) => console.error('Handled:', error),
+        retry: true,
+        maxRetries: 3
+    }
+);
+```
+
+### Event Queue Extension
+
+```typescript
+import { withEventQueue } from 'ts-event-manager/extensions';
+
+const manager = withEventQueue(eventManager);
+
+// Add queued event listener
+manager.addQueuedListener(
+    element,
+    'scroll',
+    (event) => console.log('Scroll processed'),
+    {
+        maxSize: 100,
+        batchSize: 5,
+        batchDelay: 100,
+        overflowStrategy: 'drop-oldest'
+    }
+);
+```
+
 ### Timing Extension (Debounce/Throttle)
 
 ```typescript
