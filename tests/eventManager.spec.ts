@@ -8,11 +8,15 @@ declare global {
     conditionalClickCount: number;
     intersectionCount: number;
     allowClicks: boolean;
+    lastError: string;
+    attempts: number;
   }
 }
 
+const testElements: string[] = [];
+
 test.describe('EventListenerManager', () => {
-  let testElements: string[] = [];
+  let testElementsLocal: string[] = [];
 
   test.beforeEach(async ({ page }) => {
     // Navigate to the test page
@@ -139,18 +143,18 @@ test.describe('EventListenerManager', () => {
     await page.waitForSelector('#intersectionTarget', { state: 'attached' });
     
     // Reset test elements
-    testElements = [];
+    testElementsLocal = [];
   });
 
   test.afterEach(async ({ page }) => {
     // Clean up any test elements
-    if (testElements.length > 0) {
+    if (testElementsLocal.length > 0) {
       await page.evaluate((ids) => {
         ids.forEach(id => {
           const element = document.getElementById(id);
           element?.parentNode?.removeChild(element);
         });
-      }, testElements);
+      }, testElementsLocal);
     }
     // Force cleanup of event manager
     await page.evaluate(() => {
@@ -277,7 +281,7 @@ test.describe('EventListenerManager', () => {
     });
     
     // Store element IDs for cleanup
-    testElements = elementIds;
+    testElementsLocal = elementIds;
 
     // Wait for all elements to be added and listeners attached
     await page.waitForSelector('#testElement0[data-listener-attached]');
@@ -300,5 +304,214 @@ test.describe('EventListenerManager', () => {
       return document.querySelectorAll('.test-element[data-listener-attached]').length;
     });
     expect(remainingListeners).toBe(0);
+  });
+});
+
+test.describe('Error Boundary Extension', () => {
+  test.beforeEach(async ({ page }) => {
+    // Inject the EventListenerManager class directly
+    await page.addScriptTag({
+      content: `
+        window.EventListenerManager = class EventListenerManager {
+          constructor() {
+            this.listenerMap = new WeakMap();
+            this.observer = new IntersectionObserver(this.handleIntersect.bind(this), {
+              root: null,
+              rootMargin: '0px',
+              threshold: [0, 0.1]
+            });
+            this.mutationObserver = new MutationObserver(mutations => {
+              mutations.forEach(mutation => {
+                mutation.removedNodes.forEach(node => {
+                  if (node instanceof Element) {
+                    const listeners = this.listenerMap.get(node);
+                    if (listeners) {
+                      listeners.forEach(info => {
+                        this.removeListener(info.element, info.event, info.listener);
+                      });
+                    }
+                  }
+                });
+              });
+            });
+            this.mutationObserver.observe(document.body, { childList: true, subtree: true });
+          }
+
+          addListener(element, event, listener) {
+            if (!this.listenerMap.has(element)) {
+              this.listenerMap.set(element, []);
+            }
+            const listeners = this.listenerMap.get(element);
+            listeners.push({ element, event, listener });
+            element.addEventListener(event, listener);
+            this.observer.observe(element);
+          }
+
+          removeListener(element, event, listener) {
+            element.removeEventListener(event, listener);
+            const listeners = this.listenerMap.get(element);
+            if (listeners) {
+              const index = listeners.findIndex(info => 
+                info.element === element && 
+                info.event === event && 
+                info.listener === listener
+              );
+              if (index !== -1) {
+                listeners.splice(index, 1);
+              }
+            }
+          }
+
+          handleIntersect(entries) {
+            entries.forEach(entry => {
+              const element = entry.target;
+              const listeners = this.listenerMap.get(element);
+              if (listeners) {
+                listeners.forEach(info => {
+                  if (!entry.isIntersecting) {
+                    this.removeListener(info.element, info.event, info.listener);
+                  }
+                });
+              }
+            });
+          }
+        }
+      `
+    });
+  });
+
+  test('should catch errors and call error handler', async ({ page }) => {
+    await page.setContent(`<button id="errorButton">Error Button</button>`);
+    testElements.push('errorButton');
+
+    const errors: string[] = [];
+    
+    await page.evaluate(() => {
+      const button = document.getElementById('errorButton');
+      if (!button) return;
+
+      const manager = new window.EventListenerManager();
+      const withErrorBoundary = (manager) => ({
+        addProtectedListener(element, event, listener, options = {}) {
+          const {
+            onError = console.error,
+            preventPropagation = true,
+            retry = false,
+            maxRetries = 3
+          } = options;
+
+          const protectedListener = async (event) => {
+            try {
+              await Promise.resolve(listener(event));
+            } catch (error) {
+              onError(error, event);
+              if (preventPropagation) {
+                event.stopPropagation();
+              }
+            }
+          };
+
+          manager.addListener(element, event, protectedListener);
+        }
+      });
+
+      const protectedEvent = withErrorBoundary(manager);
+      protectedEvent.addProtectedListener(
+        button,
+        'click',
+        () => {
+          throw new Error('Test Error');
+        },
+        {
+          onError: (error) => {
+            window.lastError = error.message;
+          }
+        }
+      );
+    });
+
+    // Click the button which should trigger an error
+    await page.click('#errorButton');
+
+    // Check if error was caught
+    const errorMessage = await page.evaluate(() => window.lastError);
+    expect(errorMessage).toBe('Test Error');
+  });
+
+  test('should retry failed operations', async ({ page }) => {
+    await page.setContent(`<button id="retryButton">Retry Button</button>`);
+    testElements.push('retryButton');
+
+    await page.evaluate(() => {
+      const button = document.getElementById('retryButton');
+      if (!button) return;
+
+      window.attempts = 0;
+
+      const manager = new window.EventListenerManager();
+      const withErrorBoundary = (manager) => ({
+        addProtectedListener(element, event, listener, options = {}) {
+          const {
+            onError = console.error,
+            preventPropagation = true,
+            retry = false,
+            maxRetries = 3
+          } = options;
+
+          const protectedListener = async (event) => {
+            let attempts = 0;
+            
+            const executeWithRetry = async () => {
+              try {
+                await Promise.resolve(listener(event));
+              } catch (error) {
+                attempts++;
+                window.attempts = attempts;
+                
+                if (retry && attempts < maxRetries) {
+                  await executeWithRetry();
+                } else {
+                  onError(error, event);
+                  if (preventPropagation) {
+                    event.stopPropagation();
+                  }
+                }
+              }
+            };
+
+            await executeWithRetry();
+          };
+
+          manager.addListener(element, event, protectedListener);
+        }
+      });
+
+      const protectedEvent2 = withErrorBoundary(manager);
+      protectedEvent2.addProtectedListener(
+        button,
+        'click',
+        () => {
+          throw new Error('Retry Error');
+        },
+        {
+          retry: true,
+          maxRetries: 3,
+          onError: (error) => {
+            window.lastError = error.message;
+          }
+        }
+      );
+    });
+
+    // Click the button which should trigger retries
+    await page.click('#retryButton');
+
+    // Check if all retry attempts were made
+    const attempts = await page.evaluate(() => window.attempts);
+    expect(attempts).toBe(3);
+
+    // Check if final error was caught
+    const errorMessage = await page.evaluate(() => window.lastError);
+    expect(errorMessage).toBe('Retry Error');
   });
 });

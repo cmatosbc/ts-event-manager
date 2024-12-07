@@ -449,30 +449,20 @@ Common use cases for chained events:
 
 The library provides optional extensions for advanced event handling:
 
-### Middleware Extension
-
-```typescript
-import { withMiddleware } from 'ts-event-manager/extensions';
-
-const manager = withMiddleware(eventManager);
-
-// Add logging middleware
-manager.use(async (event, next) => {
-    console.log('Before event:', event.type);
-    await next();
-    console.log('After event:', event.type);
-});
-
-// Add event listener with middleware
-manager.addListenerWithMiddleware(
-    element,
-    'click',
-    (event) => console.log('Clicked!'),
-    { parallel: false, continueOnError: true }
-);
-```
-
 ### Error Boundary Extension
+
+The Error Boundary extension provides a safety net for handling errors in event listeners. It wraps your event listeners with error handling capabilities, including:
+
+- Custom error handlers
+- Error propagation control
+- Automatic retry mechanism for failed operations
+- Configurable retry attempts
+
+This is particularly useful for:
+- Preventing uncaught errors from crashing your application
+- Implementing retry logic for flaky event handlers
+- Logging and monitoring event listener errors
+- Graceful degradation when event handlers fail
 
 ```typescript
 import { withErrorBoundary } from 'ts-event-manager/extensions';
@@ -483,110 +473,18 @@ const manager = withErrorBoundary(eventManager);
 manager.addProtectedListener(
     element,
     'click',
-    (event) => {
-        throw new Error('Example error');
+    async (event) => {
+        // This code is now protected
+        await riskyOperation();
     },
     {
-        onError: (error, event) => console.error('Handled:', error),
+        onError: (error, event) => console.error('Handler failed:', error),
+        preventPropagation: true,
         retry: true,
         maxRetries: 3
     }
 );
 ```
-
-### Event Queue Extension
-
-```typescript
-import { withEventQueue } from 'ts-event-manager/extensions';
-
-const manager = withEventQueue(eventManager);
-
-// Add queued event listener
-manager.addQueuedListener(
-    element,
-    'scroll',
-    (event) => console.log('Scroll processed'),
-    {
-        maxSize: 100,
-        batchSize: 5,
-        batchDelay: 100,
-        overflowStrategy: 'drop-oldest'
-    }
-);
-```
-
-### Timing Extension (Debounce/Throttle)
-
-```typescript
-import { withTiming } from 'ts-event-manager/extensions';
-
-const timedManager = withTiming(eventManager);
-timedManager.addTimedListener(
-    window,
-    'scroll',
-    (event) => console.log('Scrolled!'),
-    { delay: 200 }
-);
-```
-
-### Event Delegation Extension
-
-```typescript
-import { withDelegation } from 'ts-event-manager/extensions';
-
-const delegatedManager = withDelegation(eventManager);
-delegatedManager.addDelegatedListener(
-    document.querySelector('.container'),
-    'click',
-    { selector: '.button' },
-    (event, target) => console.log('Button clicked:', target)
-);
-```
-
-## Development
-
-### Prerequisites
-
-- Node.js (v14 or higher)
-- pnpm (or npm/yarn)
-
-### Setup
-
-1. Clone the repository:
-```bash
-git clone https://github.com/cmatosbc/ts-event-manager.git
-cd ts-event-manager
-```
-
-2. Install dependencies:
-```bash
-pnpm install
-```
-
-3. Build the package:
-```bash
-pnpm build
-```
-
-### Testing
-
-The package uses Playwright for end-to-end testing:
-
-```bash
-# Run all tests
-pnpm test
-
-# Run tests with UI
-pnpm test:ui
-```
-
-### Scripts
-
-- `pnpm build` - Build the TypeScript source
-- `pnpm test` - Run all tests
-- `pnpm test:ui` - Run tests with UI
-- `pnpm lint` - Lint the source code
-- `pnpm format` - Format the source code
 
 ## API Reference
 
@@ -665,6 +563,42 @@ interface ChainedEventResult<T = any> {
   continue: boolean; // Whether to continue the chain
 }
 ```
+
+### withErrorBoundary
+
+```typescript
+function withErrorBoundary(manager: EventListenerManager): {
+    addProtectedListener(
+        element: Element,
+        event: string,
+        listener: (event: Event) => void | Promise<void>,
+        options?: ErrorBoundaryOptions
+    ): void;
+}
+
+interface ErrorBoundaryOptions {
+    /** Custom error handler */
+    onError?: (error: Error, event: Event) => void | Promise<void>;
+    /** Whether to prevent error propagation */
+    preventPropagation?: boolean;
+    /** Whether to retry failed handlers */
+    retry?: boolean;
+    /** Maximum retry attempts */
+    maxRetries?: number;
+}
+```
+
+The `withErrorBoundary` extension adds error handling capabilities to the event manager:
+
+- `addProtectedListener`: Adds an event listener with error protection
+  - `element`: The DOM element to attach the listener to
+  - `event`: The event type (e.g., 'click', 'scroll')
+  - `listener`: The event handler function
+  - `options`: Configuration options for error handling
+    - `onError`: Custom function to handle errors (defaults to console.error)
+    - `preventPropagation`: Stop event propagation on error (defaults to true)
+    - `retry`: Enable automatic retry for failed operations (defaults to false)
+    - `maxRetries`: Maximum number of retry attempts (defaults to 3)
 
 ## License
 
