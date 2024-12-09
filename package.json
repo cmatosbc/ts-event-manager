@@ -4,6 +4,7 @@
   "description": "A TypeScript event listener manager with intersection observer and automatic cleanup",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "readme": "README.md",
   "scripts": {
     "build": "tsc",
     "test": "pnpm run build && playwright test",
