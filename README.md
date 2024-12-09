@@ -445,45 +445,28 @@ Common use cases for chained events:
 - Event logging and monitoring
 - Complex UI interactions with multiple steps
 
-## Extensions
-
-The library provides optional extensions for advanced event handling:
-
-### Error Boundary Extension
-
-The Error Boundary extension provides a safety net for handling errors in event listeners. It wraps your event listeners with error handling capabilities, including:
-
-- Custom error handlers
-- Error propagation control
-- Automatic retry mechanism for failed operations
-- Configurable retry attempts
-
-This is particularly useful for:
-- Preventing uncaught errors from crashing your application
-- Implementing retry logic for flaky event handlers
-- Logging and monitoring event listener errors
-- Graceful degradation when event handlers fail
+## Custom Event Triggering
 
 ```typescript
-import { withErrorBoundary } from 'ts-event-manager/extensions';
+// Create an instance of the event manager
+const eventManager = new EventListenerManager();
 
-const manager = withErrorBoundary(eventManager);
+// Add a custom event listener
+document.addEventListener('userAction', (e: CustomEvent) => {
+  const userData = e.detail; // { userId: 123, action: 'profile_update' }
+  console.log(`User ${userData.userId} performed ${userData.action}`);
+});
 
-// Add protected event listener
-manager.addProtectedListener(
-    element,
-    'click',
-    async (event) => {
-        // This code is now protected
-        await riskyOperation();
-    },
-    {
-        onError: (error, event) => console.error('Handler failed:', error),
-        preventPropagation: true,
-        retry: true,
-        maxRetries: 3
-    }
-);
+// Trigger a custom event with data
+interface UserActionData {
+  userId: number;
+  action: string;
+}
+
+eventManager.triggerCustomEvent<UserActionData>('userAction', {
+  userId: 123,
+  action: 'profile_update'
+});
 ```
 
 ## API Reference
@@ -546,6 +529,12 @@ addToChain<T>(
 Removes an entire event chain.
 ```typescript
 removeEventChain(chainId: string): void
+```
+
+##### `triggerCustomEvent`
+Triggers a custom event that can be listened to throughout the application.
+```typescript
+triggerCustomEvent<T = any>(eventName: string, data?: T): void
 ```
 
 ### `ChainedEventHandler<T>`

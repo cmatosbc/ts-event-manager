@@ -336,4 +336,25 @@ export class EventListenerManager {
 
         this.chainedHandlers.set(chainId, handlers);
     }
+
+    /**
+     * Triggers a custom event that can be listened to throughout the application
+     * @param eventName - The name of the custom event to trigger
+     * @param data - Optional data to pass with the event
+     * @throws {Error} If eventName is empty or not a string
+     * @example
+     * // Trigger a simple event
+     * eventManager.triggerCustomEvent('userLoggedIn');
+     * 
+     * // Trigger an event with data
+     * eventManager.triggerCustomEvent<UserData>('userUpdated', { id: 1, name: 'John' });
+     */
+    public triggerCustomEvent<T = any>(eventName: string, data?: T): void {
+        if (!eventName || typeof eventName !== 'string') {
+            throw new Error('Event name must be a non-empty string');
+        }
+        
+        const customEvent = new CustomEvent(eventName, { detail: data });
+        document.dispatchEvent(customEvent);
+    }
 }
