@@ -591,4 +591,4 @@ The `withErrorBoundary` extension adds error handling capabilities to the event 
 
 ## License
 
-MIT License - see the [LICENSE](LICENSE) file for details
+MIT License - see the full [LICENSE](LICENSE) file for details
