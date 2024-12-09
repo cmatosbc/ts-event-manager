@@ -109,6 +109,11 @@ test.describe('EventListenerManager', () => {
             });
             this.listenerMap = new WeakMap();
           }
+
+          triggerCustomEvent(eventName, data) {
+            const event = new CustomEvent(eventName, { detail: data });
+            document.dispatchEvent(event);
+          }
         }
 
         window.eventManager = new window.EventListenerManager();
@@ -304,6 +309,26 @@ test.describe('EventListenerManager', () => {
       return document.querySelectorAll('.test-element[data-listener-attached]').length;
     });
     expect(remainingListeners).toBe(0);
+  });
+
+  test('should trigger and handle custom events with data', async ({ page }) => {
+    // Add custom event listener and trigger event with data
+    await page.evaluate(() => {
+      // Add a variable to store received data
+      window.customEventData = null;
+
+      // Add event listener
+      document.addEventListener('customTest', ((e: CustomEvent) => {
+        window.customEventData = e.detail;
+      }) as EventListener);
+
+      // Trigger custom event with data
+      window.eventManager.triggerCustomEvent('customTest', { message: 'Hello World' });
+    });
+
+    // Verify the event was triggered and data was received
+    const receivedData = await page.evaluate(() => window.customEventData);
+    expect(receivedData).toEqual({ message: 'Hello World' });
   });
 });
 
