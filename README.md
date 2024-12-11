@@ -445,6 +445,29 @@ Common use cases for chained events:
 - Event logging and monitoring
 - Complex UI interactions with multiple steps
 
+## Custom Events
+
+```typescript
+// Trigger a custom event throughout the application
+eventManager.triggerCustomEvent('userLoggedIn');
+
+// Trigger a custom event with data
+interface UserData {
+  id: number;
+  name: string;
+}
+eventManager.triggerCustomEvent<UserData>('userUpdated', { id: 1, name: 'John' });
+
+// Listen for custom events
+eventManager.addListener(document, 'userLoggedIn', () => {
+  console.log('User logged in!');
+});
+
+eventManager.addListener(document, 'userUpdated', (event: CustomEvent<UserData>) => {
+  console.log('User updated:', event.detail);
+});
+```
+
 ## Extensions
 
 The library provides optional extensions for advanced event handling:
@@ -546,6 +569,12 @@ addToChain<T>(
 Removes an entire event chain.
 ```typescript
 removeEventChain(chainId: string): void
+```
+
+##### `triggerCustomEvent`
+Triggers a custom event that can be listened to throughout the application.
+```typescript
+triggerCustomEvent<T = any>(eventName: string, data?: T): void
 ```
 
 ### `ChainedEventHandler<T>`
