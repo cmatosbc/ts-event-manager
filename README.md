@@ -445,6 +445,149 @@ Common use cases for chained events:
 - Event logging and monitoring
 - Complex UI interactions with multiple steps
 
+## Debounce Extension
+
+The debounce extension allows you to limit the rate at which event listeners are triggered, which is particularly useful for performance optimization with frequently firing events like scroll, resize, or input.
+
+### Basic Debounce Usage
+
+```typescript
+import { EventListenerManager } from 'ts-event-manager';
+
+const eventManager = new EventListenerManager();
+const searchInput = document.querySelector('#search-input');
+
+// Debounce search input with 300ms delay
+eventManager.addListener(
+  searchInput,
+  'input',
+  (e) => {
+    const query = (e.target as HTMLInputElement).value;
+    performSearch(query);
+  },
+  undefined, // No condition
+  { 
+    debounce: { 
+      delay: 300 
+    }
+  }
+);
+```
+
+### Advanced Debounce Options
+
+```typescript
+// With leading edge execution and maximum wait time
+eventManager.addListener(
+  window,
+  'scroll',
+  () => updateScrollPosition(),
+  undefined,
+  {
+    debounce: {
+      delay: 100,      // Wait 100ms after last call
+      leading: true,   // Execute on the leading edge
+      maxWait: 1000    // Force execution after 1000ms
+    }
+  }
+);
+```
+
+### Debounce Configuration
+
+The debounce extension accepts the following options:
+
+| Option    | Type    | Default | Description |
+|-----------|---------|---------|-------------|
+| `delay`   | number  | -       | The number of milliseconds to delay execution after the last call |
+| `leading` | boolean | false   | If true, calls the function on the leading edge instead of trailing |
+| `maxWait` | number  | undefined | Maximum time to wait before forcing execution |
+
+### Common Use Cases
+
+#### Autocomplete Search
+```typescript
+// Debounced search input that updates suggestions
+eventManager.addListener(
+  searchInput,
+  'input',
+  async (e) => {
+    const query = (e.target as HTMLInputElement).value;
+    const suggestions = await fetchSuggestions(query);
+    updateSuggestionsList(suggestions);
+  },
+  undefined,
+  { debounce: { delay: 300 } }
+);
+```
+
+#### Window Resize Handler
+```typescript
+// Debounced resize handler with immediate execution
+eventManager.addListener(
+  window,
+  'resize',
+  () => {
+    recalculateLayout();
+    updateResponsiveElements();
+  },
+  undefined,
+  { 
+    debounce: { 
+      delay: 250,
+      leading: true 
+    } 
+  }
+);
+```
+
+#### Form Validation
+```typescript
+// Debounced form validation with maximum wait time
+eventManager.addListener(
+  form,
+  'input',
+  (e) => {
+    const field = e.target as HTMLInputElement;
+    validateField(field);
+    updateSubmitButton();
+  },
+  undefined,
+  { 
+    debounce: { 
+      delay: 500,
+      maxWait: 2000 
+    } 
+  }
+);
+```
+
+### Best Practices
+
+1. **Choose Appropriate Delays**
+   - Use shorter delays (100-300ms) for UI feedback
+   - Use longer delays (500ms+) for expensive operations
+   - Consider user experience when setting delays
+
+2. **Use Leading Edge**
+   - Enable `leading: true` when immediate feedback is important
+   - Useful for scroll position updates or UI state changes
+
+3. **Set Maximum Wait Times**
+   - Use `maxWait` to ensure updates happen within a reasonable timeframe
+   - Particularly important for critical UI updates
+
+4. **Clean Up**
+   - The EventListenerManager automatically handles cleanup of debounced listeners
+   - No manual cleanup required when elements are removed
+
+### Performance Considerations
+
+- Debouncing helps reduce unnecessary function calls
+- Use with high-frequency events like scroll, resize, mousemove
+- Consider the trade-off between responsiveness and performance
+- Monitor memory usage when using long delays with preserved event objects
+
 ## Custom Events
 
 ```typescript

@@ -16,6 +16,8 @@ export interface EventListenerInfo {
     chainId?: string;
     /** Whether this is a chained event handler */
     isChainedHandler?: boolean;
+    /** Debounce options if this is a debounced listener */
+    debounceOptions?: DebounceOptions;
 }
 
 /**
@@ -35,6 +37,8 @@ export type ChainedEventHandler<T = any> = (
     event: Event,
     data?: T
 ) => ChainedEventResult<T> | Promise<ChainedEventResult<T>>;
+
+import { DebounceOptions, createDebouncedListener } from './extensions/debounce';
 
 /**
  * Manages DOM event listeners with intersection observer support and automatic cleanup
@@ -125,6 +129,32 @@ export class EventListenerManager {
         }
         
         this.observer.observe(element);
+    }
+
+    /**
+     * Adds a debounced event listener
+     * @param element - The DOM element to attach the listener to
+     * @param event - The event type (e.g., 'click', 'scroll')
+     * @param listener - The event listener function or object
+     * @param options - Debounce configuration options
+     * @param condition - Optional condition that must be true for the listener to be active
+     */
+    public addDebouncedListener(
+        element: Element,
+        event: string,
+        listener: EventListenerOrEventListenerObject,
+        options: DebounceOptions,
+        condition?: () => boolean
+    ): void {
+        const debouncedListener = createDebouncedListener(listener, options);
+        this.addListener(element, event, debouncedListener, condition);
+        
+        // Store the debounce options with the listener info
+        const listeners = this.listenerMap.get(element) || [];
+        const lastListener = listeners[listeners.length - 1];
+        if (lastListener) {
+            lastListener.debounceOptions = options;
+        }
     }
 
     /**
