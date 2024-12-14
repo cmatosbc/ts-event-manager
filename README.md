@@ -447,9 +447,7 @@ Common use cases for chained events:
 
 ## Debounce Extension
 
-The debounce extension allows you to limit the rate at which event listeners are triggered, which is particularly useful for performance optimization with frequently firing events like scroll, resize, or input.
-
-### Basic Debounce Usage
+The debounce extension provides a way to add debounced event listeners using `addDebouncedListener`.
 
 ```typescript
 import { EventListenerManager } from 'ts-event-manager';
@@ -457,38 +455,15 @@ import { EventListenerManager } from 'ts-event-manager';
 const eventManager = new EventListenerManager();
 const searchInput = document.querySelector('#search-input');
 
-// Debounce search input with 300ms delay
-eventManager.addListener(
+eventManager.addDebouncedListener(
   searchInput,
   'input',
   (e) => {
     const query = (e.target as HTMLInputElement).value;
     performSearch(query);
   },
-  undefined, // No condition
   { 
-    debounce: { 
-      delay: 300 
-    }
-  }
-);
-```
-
-### Advanced Debounce Options
-
-```typescript
-// With leading edge execution and maximum wait time
-eventManager.addListener(
-  window,
-  'scroll',
-  () => updateScrollPosition(),
-  undefined,
-  {
-    debounce: {
-      delay: 100,      // Wait 100ms after last call
-      leading: true,   // Execute on the leading edge
-      maxWait: 1000    // Force execution after 1000ms
-    }
+    delay: 300 
   }
 );
 ```
@@ -503,40 +478,19 @@ The debounce extension accepts the following options:
 | `leading` | boolean | false   | If true, calls the function on the leading edge instead of trailing |
 | `maxWait` | number  | undefined | Maximum time to wait before forcing execution |
 
-### Common Use Cases
+### Advanced Usage Examples
 
-#### Autocomplete Search
+#### Scroll Position Updates
 ```typescript
-// Debounced search input that updates suggestions
-eventManager.addListener(
-  searchInput,
-  'input',
-  async (e) => {
-    const query = (e.target as HTMLInputElement).value;
-    const suggestions = await fetchSuggestions(query);
-    updateSuggestionsList(suggestions);
-  },
-  undefined,
-  { debounce: { delay: 300 } }
-);
-```
-
-#### Window Resize Handler
-```typescript
-// Debounced resize handler with immediate execution
-eventManager.addListener(
+// With leading edge execution and maximum wait time
+eventManager.addDebouncedListener(
   window,
-  'resize',
-  () => {
-    recalculateLayout();
-    updateResponsiveElements();
-  },
-  undefined,
-  { 
-    debounce: { 
-      delay: 250,
-      leading: true 
-    } 
+  'scroll',
+  () => updateScrollPosition(),
+  {
+    delay: 100,      // Wait 100ms after last call
+    leading: true,   // Execute on the leading edge
+    maxWait: 1000    // Force execution after 1000ms
   }
 );
 ```
@@ -544,7 +498,7 @@ eventManager.addListener(
 #### Form Validation
 ```typescript
 // Debounced form validation with maximum wait time
-eventManager.addListener(
+eventManager.addDebouncedListener(
   form,
   'input',
   (e) => {
@@ -552,12 +506,9 @@ eventManager.addListener(
     validateField(field);
     updateSubmitButton();
   },
-  undefined,
   { 
-    debounce: { 
-      delay: 500,
-      maxWait: 2000 
-    } 
+    delay: 500,
+    maxWait: 2000 
   }
 );
 ```
