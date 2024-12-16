@@ -4,6 +4,27 @@
 
 A robust TypeScript library for managing DOM event listeners with automatic cleanup, intersection observer support, and conditional event handling. This library helps prevent memory leaks and simplifies the management of event listeners in modern web applications.
 
+## Table of Contents
+
+- [Features](#features)
+- [Installation](#installation)
+- [Core Features](#core-features)
+  - [Basic Event Listeners](#basic-event-listeners)
+  - [Conditional Event Handling](#conditional-event-handling)
+  - [Intersection Observer Integration](#intersection-observer-integration)
+  - [Event Chains](#event-chains)
+  - [Automatic Cleanup](#automatic-cleanup)
+  - [Manual Cleanup](#manual-cleanup)
+- [Extensions](#extensions)
+  - [Debounce](#debounce)
+  - [Once](#once)
+  - [Error Boundary](#error-boundary)
+- [Examples](#examples)
+  - [Form Handling](#form-handling)
+  - [List Management](#list-management)
+- [Best Practices](#best-practices)
+- [License](#license)
+
 ## Features
 
 - **Type-safe event listener management** with TypeScript support
@@ -28,9 +49,9 @@ yarn add ts-event-manager
 pnpm add ts-event-manager
 ```
 
-## Usage
+## Core Features
 
-### Basic Event Listener
+### Basic Event Listeners
 
 ```typescript
 import { EventListenerManager } from 'ts-event-manager';
@@ -45,7 +66,7 @@ eventManager.addListener(button, 'click', () => {
 });
 ```
 
-### Conditional Event Listener
+### Conditional Event Handling
 
 ```typescript
 // Add a listener that only fires when a condition is met
@@ -78,8 +99,36 @@ eventManager.addListener(element, 'mouseenter', () => {
 });
 
 // The mouseenter event will only fire when the element is visible
-// The element will automatically get 'data-visible="true"' when visible
 ```
+
+### Event Chains
+
+```typescript
+// Create a chain of event handlers that process data sequentially
+eventManager.createEventChain(
+  'formChain',
+  form,
+  'submit',
+  [
+    (event, data) => ({
+      data: { ...data, validated: true },
+      continue: true
+    }),
+    async (event, data) => {
+      await saveToServer(data);
+      return { data, continue: true };
+    }
+  ]
+);
+```
+
+### Automatic Cleanup
+
+The EventListenerManager automatically:
+- Removes listeners when elements are removed from the DOM
+- Cleans up all listeners when the page unloads
+- Manages IntersectionObserver observations
+- Removes data attributes when listeners are removed
 
 ### Manual Cleanup
 
@@ -91,465 +140,33 @@ eventManager.removeListener(element, 'click', listener);
 eventManager.cleanUp();
 ```
 
-### Automatic Cleanup
-
-The EventListenerManager automatically:
-- Removes listeners when elements are removed from the DOM
-- Cleans up all listeners when the page unloads
-- Manages IntersectionObserver observations
-- Removes data attributes when listeners are removed
-
-## Real-World Examples
-
-### Infinite Scroll Implementation
-```typescript
-const eventManager = new EventListenerManager({
-  rootMargin: '100px', // Start loading before element is visible
-});
-
-class InfiniteScroll {
-  private loading = false;
-  private page = 1;
-
-  constructor(private container: HTMLElement) {
-    // Create and append loading indicator
-    const loadingIndicator = document.createElement('div');
-    loadingIndicator.id = 'loading';
-    loadingIndicator.style.display = 'none';
-    container.appendChild(loadingIndicator);
-
-    // Add intersection observer based loader
-    eventManager.addListener(
-      loadingIndicator,
-      'mouseenter', // Using mouseenter as a proxy for visibility
-      async () => {
-        if (!this.loading) {
-          this.loading = true;
-          await this.loadMoreContent();
-          this.loading = false;
-        }
-      },
-      () => !this.loading // Only trigger if not already loading
-    );
-  }
-
-  private async loadMoreContent() {
-    const response = await fetch(`/api/items?page=${this.page}`);
-    const items = await response.json();
-    // Append new items to container
-    items.forEach(item => {
-      const element = createItemElement(item);
-      this.container.insertBefore(element, this.container.lastChild);
-    });
-    this.page++;
-  }
-}
-```
-
-### Lazy-Loading Images
-```typescript
-const imageManager = new EventListenerManager({
-  threshold: [0, 0.1], // Start loading when even slightly visible
-});
-
-function setupLazyImages() {
-  document.querySelectorAll('img[data-src]').forEach(img => {
-    imageManager.addListener(
-      img,
-      'mouseenter',
-      () => {
-        const image = img as HTMLImageElement;
-        const src = image.getAttribute('data-src');
-        if (src) {
-          image.src = src;
-          image.removeAttribute('data-src');
-        }
-      },
-      () => !img.hasAttribute('src') // Only load if not already loaded
-    );
-  });
-}
-```
-
-### Form Validation with Conditional Submit
-```typescript
-const formManager = new EventListenerManager();
-
-class SmartForm {
-  private isValid = false;
-  private isDirty = false;
-
-  constructor(private form: HTMLFormElement) {
-    // Add input listeners
-    form.querySelectorAll('input').forEach(input => {
-      formManager.addListener(input, 'input', () => {
-        this.isDirty = true;
-        this.validate();
-      });
-    });
-
-    // Add submit listener with condition
-    formManager.addListener(
-      form,
-      'submit',
-      (e) => {
-        if (!this.isValid) {
-          e.preventDefault();
-          this.showErrors();
-        }
-      },
-      () => this.isDirty // Only validate if form has been modified
-    );
-  }
-
-  private validate() {
-    // Perform validation
-    this.isValid = Array.from(this.form.elements)
-      .every(element => (element as HTMLInputElement).validity.valid);
-    
-    // Update UI
-    this.form.classList.toggle('is-valid', this.isValid);
-  }
-
-  private showErrors() {
-    this.form.classList.add('show-errors');
-  }
-}
-```
-
-### Modal Dialog with Cleanup
-```typescript
-class Modal {
-  private element: HTMLElement;
-
-  constructor(content: string) {
-    this.element = document.createElement('div');
-    this.element.className = 'modal';
-    this.element.innerHTML = `
-      <div class="modal-content">
-        ${content}
-        <button class="close">&times;</button>
-      </div>
-    `;
-  }
-
-  show() {
-    document.body.appendChild(this.element);
-    
-    // Add event listeners that will be automatically cleaned up
-    eventManager.addListener(
-      this.element.querySelector('.close')!,
-      'click',
-      () => this.hide()
-    );
-
-    // Close on click outside
-    eventManager.addListener(
-      this.element,
-      'click',
-      (e) => {
-        if (e.target === this.element) {
-          this.hide();
-        }
-      }
-    );
-
-    // Close on escape key
-    eventManager.addListener(
-      document,
-      'keydown',
-      (e) => {
-        if (e instanceof KeyboardEvent && e.key === 'Escape') {
-          this.hide();
-        }
-      }
-    );
-  }
-
-  hide() {
-    // The EventListenerManager will automatically clean up all listeners
-    // when the element is removed from the DOM
-    this.element.remove();
-  }
-}
-```
-
-### Dynamic Content Management
-```typescript
-class DynamicList {
-  private eventManager = new EventListenerManager();
-  private container: HTMLElement;
-
-  constructor(containerId: string) {
-    this.container = document.getElementById(containerId)!;
-    
-    // Add sort functionality
-    const sortButtons = this.container.querySelectorAll('.sort-button');
-    sortButtons.forEach(button => {
-      this.eventManager.addListener(button, 'click', () => {
-        const column = button.getAttribute('data-sort');
-        if (column) this.sortBy(column);
-      });
-    });
-
-    // Add filter functionality with debounce
-    const filterInput = this.container.querySelector('.filter-input');
-    if (filterInput) {
-      let timeout: NodeJS.Timeout;
-      this.eventManager.addListener(filterInput, 'input', (e) => {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => {
-          const value = (e.target as HTMLInputElement).value;
-          this.filterItems(value);
-        }, 300);
-      });
-    }
-
-    // Add drag and drop for items
-    this.container.querySelectorAll('.list-item').forEach(item => {
-      this.setupDragAndDrop(item as HTMLElement);
-    });
-  }
-
-  private setupDragAndDrop(item: HTMLElement) {
-    this.eventManager.addListener(item, 'dragstart', (e) => {
-      if (e instanceof DragEvent) {
-        e.dataTransfer?.setData('text/plain', item.id);
-        item.classList.add('dragging');
-      }
-    });
-
-    this.eventManager.addListener(item, 'dragend', () => {
-      item.classList.remove('dragging');
-    });
-
-    // Conditional drop handling
-    this.eventManager.addListener(
-      item,
-      'drop',
-      (e) => {
-        if (e instanceof DragEvent) {
-          e.preventDefault();
-          const draggedId = e.dataTransfer?.getData('text/plain');
-          const draggedElement = document.getElementById(draggedId);
-          if (draggedElement && this.canDrop(draggedElement, item)) {
-            this.handleDrop(draggedElement, item);
-          }
-        }
-      },
-      () => this.isDropEnabled // Only allow drops when enabled
-    );
-  }
-
-  private isDropEnabled = true;
-  private canDrop(dragged: HTMLElement, target: HTMLElement): boolean {
-    // Implement drop validation logic
-    return true;
-  }
-
-  private handleDrop(dragged: HTMLElement, target: HTMLElement) {
-    // Implement drop handling logic
-  }
-
-  private sortBy(column: string) {
-    // Implement sorting logic
-  }
-
-  private filterItems(value: string) {
-    // Implement filtering logic
-  }
-
-  // Clean up when removing the list
-  public destroy() {
-    this.eventManager.cleanUp();
-  }
-}
-
-// Usage
-const list = new DynamicList('dynamic-list');
-
-// When done
-list.destroy(); // All event listeners will be cleaned up
-```
-
-### Chained Event Handlers
-
-The EventListenerManager supports creating chains of event handlers where the output of one handler becomes the input for the next. This is particularly useful for processing events through multiple steps, such as validation, transformation, and UI updates.
-
-```typescript
-import { EventListenerManager, ChainedEventHandler } from 'ts-event-manager';
-
-const manager = new EventListenerManager();
-
-// Define handlers in your chain
-const validateInput: ChainedEventHandler<string> = (event, data) => ({
-  data: (event.target as HTMLInputElement).value.trim(),
-  continue: true
-});
-
-const transformInput: ChainedEventHandler<string> = (event, data) => ({
-  data: data?.toUpperCase(),
-  continue: true
-});
-
-const updateUI: ChainedEventHandler<string> = (event, data) => {
-  // Store or use the processed data
-  const output = document.getElementById('output');
-  if (output) {
-    output.textContent = data || '';
-  }
-  return { data, continue: true };
-};
-
-// Get input element and create the chain
-const input = document.querySelector('input');
-if (input) {
-  manager.createEventChain(
-    'input-chain',          // unique chain ID
-    input,                  // DOM element
-    'input',               // event type
-    [validateInput, transformInput, updateUI]  // array of handlers
-  );
-}
-
-// Example: Conditional chain handling
-const validateWithCondition: ChainedEventHandler<string> = (event, data) => ({
-  data: (event.target as HTMLInputElement).value.trim(),
-  continue: (event.target as HTMLInputElement).value.length > 0  // only continue if input is not empty
-});
-
-// Add a handler to an existing chain
-const logHandler: ChainedEventHandler<string> = (event, data) => {
-  console.log('Processed input:', data);
-  return { data, continue: true };
-};
-
-manager.addToChain('input-chain', logHandler);
-
-// Remove the chain when no longer needed
-manager.removeEventChain('input-chain');
-```
-
-Each handler in the chain:
-- Receives the event object and the data from the previous handler
-- Must return an object with:
-  - `data`: The processed data to pass to the next handler
-  - `continue`: Boolean indicating whether to continue the chain
-- Can be async for handling asynchronous operations
-- Can break the chain by returning `continue: false`
-
-Common use cases for chained events:
-- Form validation and processing
-- Multi-step data transformations
-- Input sanitization and formatting
-- Event logging and monitoring
-- Complex UI interactions with multiple steps
-
-## Debounce Extension
-
-The debounce extension provides a way to add debounced event listeners using `addDebouncedListener`.
-
-```typescript
-import { EventListenerManager } from 'ts-event-manager';
-
-const eventManager = new EventListenerManager();
-const searchInput = document.querySelector('#search-input');
-
-eventManager.addDebouncedListener(
-  searchInput,
-  'input',
-  (e) => {
-    const query = (e.target as HTMLInputElement).value;
-    performSearch(query);
-  },
-  { 
-    delay: 300 
-  }
-);
-```
-
-### Debounce Configuration
-
-The debounce extension accepts the following options:
-
-| Option    | Type    | Default | Description |
-|-----------|---------|---------|-------------|
-| `delay`   | number  | -       | The number of milliseconds to delay execution after the last call |
-| `leading` | boolean | false   | If true, calls the function on the leading edge instead of trailing |
-| `maxWait` | number  | undefined | Maximum time to wait before forcing execution |
-
-### Advanced Usage Examples
-
-#### Scroll Position Updates
-```typescript
-// With leading edge execution and maximum wait time
-eventManager.addDebouncedListener(
-  window,
-  'scroll',
-  () => updateScrollPosition(),
-  {
-    delay: 100,      // Wait 100ms after last call
-    leading: true,   // Execute on the leading edge
-    maxWait: 1000    // Force execution after 1000ms
-  }
-);
-```
-
-#### Form Validation
-```typescript
-// Debounced form validation with maximum wait time
-eventManager.addDebouncedListener(
-  form,
-  'input',
-  (e) => {
-    const field = e.target as HTMLInputElement;
-    validateField(field);
-    updateSubmitButton();
-  },
-  { 
-    delay: 500,
-    maxWait: 2000 
-  }
-);
-```
-
-### Best Practices
-
-1. **Choose Appropriate Delays**
-   - Use shorter delays (100-300ms) for UI feedback
-   - Use longer delays (500ms+) for expensive operations
-   - Consider user experience when setting delays
-
-2. **Use Leading Edge**
-   - Enable `leading: true` when immediate feedback is important
-   - Useful for scroll position updates or UI state changes
-
-3. **Set Maximum Wait Times**
-   - Use `maxWait` to ensure updates happen within a reasonable timeframe
-   - Particularly important for critical UI updates
-
-4. **Clean Up**
-   - The EventListenerManager automatically handles cleanup of debounced listeners
-   - No manual cleanup required when elements are removed
-
-### Performance Considerations
-
-- Debouncing helps reduce unnecessary function calls
-- Use with high-frequency events like scroll, resize, mousemove
-- Consider the trade-off between responsiveness and performance
-- Monitor memory usage when using long delays with preserved event objects
-
 ## Extensions
-
-The library provides optional extensions for advanced event handling:
 
 ### Debounce
 
-{{ ... }}
+The debounce extension helps control the rate at which event handlers are called, particularly useful for handling high-frequency events.
+
+```typescript
+import { EventListenerManager } from 'ts-event-manager';
+import { debounce } from 'ts-event-manager/extensions';
+
+const eventManager = new EventListenerManager();
+const searchInput = document.querySelector('#search');
+
+// Debounce search input with 300ms delay
+eventManager.addDebouncedListener(
+  searchInput,
+  'input',
+  (event) => {
+    console.log('Searching...', event.target.value);
+  },
+  { delay: 300 }
+);
+```
 
 ### Once
 
-The `once` extension ensures that an event listener only fires once and then automatically stops listening. This is useful for one-time initialization, handling unique events, or implementing one-shot behaviors.
+The once extension ensures that an event listener only fires once and then automatically stops listening.
 
 ```typescript
 import { EventListenerManager } from 'ts-event-manager';
@@ -563,182 +180,84 @@ eventManager.addListener(button, 'click', once(() => {
     console.log('This will only happen once!');
 }));
 
-// Works with EventListenerObject as well
-eventManager.addListener(button, 'click', once({
-    handleEvent() {
-        console.log('This will also only happen once!');
-    }
-}));
-
 // Useful for one-time initialization
 eventManager.addListener(document, 'DOMContentLoaded', once(() => {
     initializeApp();
 }));
 ```
 
-Benefits of using once:
-- Prevents duplicate event handling
-- Automatically cleans up after firing
-- Works with both function and object listeners
-- Maintains proper 'this' context
-- Integrates seamlessly with EventListenerManager
+### Error Boundary
 
-### Error Boundary Extension
-
-The Error Boundary extension provides a safety net for handling errors in event listeners. It wraps your event listeners with error handling capabilities, including:
-
-- Custom error handlers
-- Error propagation control
-- Automatic retry mechanism for failed operations
-- Configurable retry attempts
-
-This is particularly useful for:
-- Preventing uncaught errors from crashing your application
-- Implementing retry logic for flaky event handlers
-- Logging and monitoring event listener errors
-- Graceful degradation when event handlers fail
+The Error Boundary extension provides error handling capabilities for event listeners.
 
 ```typescript
+import { EventListenerManager } from 'ts-event-manager';
 import { withErrorBoundary } from 'ts-event-manager/extensions';
 
-const manager = withErrorBoundary(eventManager);
+const eventManager = new EventListenerManager();
+const button = document.querySelector('#myButton');
 
-// Add protected event listener
-manager.addProtectedListener(
-    element,
-    'click',
-    async (event) => {
-        // This code is now protected
-        await riskyOperation();
-    },
-    {
-        onError: (error, event) => console.error('Handler failed:', error),
-        preventPropagation: true,
-        retry: true,
-        maxRetries: 3
+// Add error handling to event listener
+eventManager.addListener(
+  button,
+  'click',
+  withErrorBoundary(() => {
+    throw new Error('Something went wrong');
+  }, {
+    onError: (error) => {
+      console.error('Caught error:', error);
     }
+  })
 );
 ```
 
-## API Reference
+## Examples
 
-### `EventListenerManager`
+### Form Handling
 
-#### Constructor
 ```typescript
-constructor(intersectionOptions?: IntersectionObserverInit)
+const formManager = new EventListenerManager();
+const form = document.querySelector('#myForm');
+
+formManager.addListener(form, 'submit', async (event) => {
+  event.preventDefault();
+  const data = new FormData(form);
+  await submitForm(data);
+});
 ```
 
-#### Methods
-
-##### `addListener`
-```typescript
-addListener(
-  element: Element,
-  event: string,
-  listener: EventListenerOrEventListenerObject,
-  condition?: () => boolean
-): void
-```
-
-##### `removeListener`
-```typescript
-removeListener(
-  element: Element,
-  event: string,
-  listener: EventListenerOrEventListenerObject
-): void
-```
-
-##### `cleanUp`
-```typescript
-cleanUp(): void
-```
-
-##### `createEventChain`
-Creates a new chain of event handlers.
-```typescript
-createEventChain<T>(
-  chainId: string,
-  element: Element,
-  event: string,
-  handlers: ChainedEventHandler<T>[]
-): void
-```
-
-##### `addToChain`
-Adds a new handler to an existing chain.
-```typescript
-addToChain<T>(
-  chainId: string,
-  handler: ChainedEventHandler<T>,
-  position?: number
-): void
-```
-
-##### `removeEventChain`
-Removes an entire event chain.
-```typescript
-removeEventChain(chainId: string): void
-```
-
-##### `triggerCustomEvent`
-Triggers a custom event that can be listened to throughout the application.
-```typescript
-triggerCustomEvent<T = any>(eventName: string, data?: T): void
-```
-
-### `ChainedEventHandler<T>`
-
-A type representing a handler function in an event chain.
+### List Management
 
 ```typescript
-type ChainedEventHandler<T = any> = (
-  event: Event,
-  data?: T
-) => ChainedEventResult<T> | Promise<ChainedEventResult<T>>;
+class ListManager {
+  private manager = new EventListenerManager();
+  
+  constructor(private list: HTMLElement) {
+    this.setupListeners();
+  }
 
-interface ChainedEventResult<T = any> {
-  data: T;        // Data to pass to the next handler
-  continue: boolean; // Whether to continue the chain
+  private setupListeners() {
+    this.manager.addListener(this.list, 'click', (e) => {
+      if (e.target.matches('.delete-btn')) {
+        this.handleDelete(e);
+      }
+    });
+  }
+
+  destroy() {
+    this.manager.cleanUp();
+  }
 }
 ```
 
-### withErrorBoundary
+## Best Practices
 
-```typescript
-function withErrorBoundary(manager: EventListenerManager): {
-    addProtectedListener(
-        element: Element,
-        event: string,
-        listener: (event: Event) => void | Promise<void>,
-        options?: ErrorBoundaryOptions
-    ): void;
-}
-
-interface ErrorBoundaryOptions {
-    /** Custom error handler */
-    onError?: (error: Error, event: Event) => void | Promise<void>;
-    /** Whether to prevent error propagation */
-    preventPropagation?: boolean;
-    /** Whether to retry failed handlers */
-    retry?: boolean;
-    /** Maximum retry attempts */
-    maxRetries?: number;
-}
-```
-
-The `withErrorBoundary` extension adds error handling capabilities to the event manager:
-
-- `addProtectedListener`: Adds an event listener with error protection
-  - `element`: The DOM element to attach the listener to
-  - `event`: The event type (e.g., 'click', 'scroll')
-  - `listener`: The event handler function
-  - `options`: Configuration options for error handling
-    - `onError`: Custom function to handle errors (defaults to console.error)
-    - `preventPropagation`: Stop event propagation on error (defaults to true)
-    - `retry`: Enable automatic retry for failed operations (defaults to false)
-    - `maxRetries`: Maximum number of retry attempts (defaults to 3)
+- Use a single EventListenerManager instance per component or module
+- Always call cleanUp() when a component is destroyed
+- Leverage conditional listeners for dynamic behavior
+- Use debounce for high-frequency events
+- Implement error boundaries for critical event handlers
+- Take advantage of automatic cleanup features
 
 ## License
 
