@@ -539,32 +539,49 @@ eventManager.addDebouncedListener(
 - Consider the trade-off between responsiveness and performance
 - Monitor memory usage when using long delays with preserved event objects
 
-## Custom Events
-
-```typescript
-// Trigger a custom event throughout the application
-eventManager.triggerCustomEvent('userLoggedIn');
-
-// Trigger a custom event with data
-interface UserData {
-  id: number;
-  name: string;
-}
-eventManager.triggerCustomEvent<UserData>('userUpdated', { id: 1, name: 'John' });
-
-// Listen for custom events
-eventManager.addListener(document, 'userLoggedIn', () => {
-  console.log('User logged in!');
-});
-
-eventManager.addListener(document, 'userUpdated', (event: CustomEvent<UserData>) => {
-  console.log('User updated:', event.detail);
-});
-```
-
 ## Extensions
 
 The library provides optional extensions for advanced event handling:
+
+### Debounce
+
+{{ ... }}
+
+### Once
+
+The `once` extension ensures that an event listener only fires once and then automatically stops listening. This is useful for one-time initialization, handling unique events, or implementing one-shot behaviors.
+
+```typescript
+import { EventListenerManager } from 'ts-event-manager';
+import { once } from 'ts-event-manager/extensions';
+
+const eventManager = new EventListenerManager();
+const button = document.querySelector('#myButton');
+
+// This click handler will only fire once
+eventManager.addListener(button, 'click', once(() => {
+    console.log('This will only happen once!');
+}));
+
+// Works with EventListenerObject as well
+eventManager.addListener(button, 'click', once({
+    handleEvent() {
+        console.log('This will also only happen once!');
+    }
+}));
+
+// Useful for one-time initialization
+eventManager.addListener(document, 'DOMContentLoaded', once(() => {
+    initializeApp();
+}));
+```
+
+Benefits of using once:
+- Prevents duplicate event handling
+- Automatically cleans up after firing
+- Works with both function and object listeners
+- Maintains proper 'this' context
+- Integrates seamlessly with EventListenerManager
 
 ### Error Boundary Extension
 
